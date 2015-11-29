@@ -1,0 +1,63 @@
+#!/bin/bash
+
+# declare
+MWARECHK_LOG="/component/mwarechk/mwarechk.log"
+
+# MYCAT/MYSQL CHECK
+MYSQL_HOST="127.0.0.1"
+MYSQL_PORT="8066"
+MYSQL_USERNAME="test"
+MYSQL_PASSWORD="test"
+MYSQL_BIN=/component/mysql/mysql01/bin/mysql
+MYSQL_TIMEOUT=10
+MYSQL_EXTRA_ARGS=""
+MYSQL_CMDLINE="$MYSQL_BIN --host=$MYSQL_HOST --port=$MYSQL_PORT --connect-timeout=$MYSQL_TIMEOUT ${EXTRA_ARGS} --user=$MYSQL_USERNAME --password=$MYSQL_PASSWORD"
+
+# get request message
+# reference http://stackoverflow.com/questions/16640054/minimal-web-server-using-netcat
+x=0
+Log=$(echo -n "["$(date "+%F %T %Z")"] $REMOTE_HOST ")$(
+	while read I[$x] && [ ${#I[$x]} -gt 1 ]
+	do
+		echo -n '"'${I[$x]} | sed -e's,.$,",'
+		let "x = $x + 1"
+	done 
+)
+# write req log
+echo $Log >> $MWARECHK_LOG
+
+REQ_LINE=$(echo ${Log} |cut -d'"' -f2)
+METHOD=$(echo ${REQ_LINE} |cut -d' ' -f1)
+URL=$(echo ${REQ_LINE} |cut -d' ' -f2)
+
+if [ "$METHOD" = "GET" ]
+then 
+	case "$URL" in
+		/rabbitmq_status)
+			# get RabbitMQ Status
+			ERROR_MSG=""
+			;;
+		/mycat_status)
+			# get Mycat Status
+			ERROR_MSG=$($MYSQL_CMDLINE -e "select user();" 2>/dev/null)
+			;;
+		*)
+			# default Page not found
+			ERROR_MSG=""
+			;;
+	esac
+fi
+
+# write resp log
+echo "["$(date "+%F %T %Z")"] $REMOTE_HOST $ERROR_MSG" >> $MWARECHK_LOG
+
+# put response message
+# reference http://www.w3.org/Protocols/rfc2616/rfc2616-sec6.html
+if [ "$ERROR_MSG" != "" ]
+then
+	echo -en "HTTP/1.0 200 OK\r\n"
+	echo -en "\r\n"
+else
+        echo -en "HTTP/1.1 503 Service Unavailable\r\n"
+        echo -en "\r\n"
+fi

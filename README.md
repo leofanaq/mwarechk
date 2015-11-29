@@ -12,8 +12,6 @@ mwarechk 9077/tcp # Check MWare's status
   
 4 Create xinetd's file    
 [mycat@db01 ~]$ cat /etc/xinetd.d/mwarechk   
-# default: on  
-# description: Check MWare's status  
 service mwarechk  
 {  
         flags           = REUSE  
@@ -44,9 +42,9 @@ Saving to: ‘mycat_status’
   
 7 Modify keepalived.conf  
 [root@lvs-001 keepalived]# cat keepalived.conf   
-...  
+	...  
 virtual_server 192.168.0.140 8066 {  
-...  
+	...  
   
     real_server 192.168.0.122 8066 {  
         weight 3  
